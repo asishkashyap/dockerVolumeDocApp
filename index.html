@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Blobfuse Deployment Interactive Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; }
+        
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 600px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px; 
+            max-height: 400px; 
+        } 
+        @media (min-width: 768px) { 
+            .chart-container { height: 350px; } 
+        }
+
+        /* Interactive Diagram Styles */
+        .diagram-node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .diagram-node:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .diagram-node.active {
+            border-color: #3B82F6;
+            background-color: #EFF6FF;
+        }
+        
+        /* Connector Lines (Pure CSS - No SVG) */
+        .connector-v {
+            width: 2px;
+            background-color: #9CA3AF;
+            margin: 0 auto;
+        }
+        .connector-h {
+            height: 2px;
+            background-color: #9CA3AF;
+            margin: auto 0;
+        }
+        
+        /* Code Block Styling */
+        pre {
+            background-color: #1F2937;
+            color: #E5E7EB;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #374151;
+            color: #D1D5DB;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover { background-color: #4B5563; }
+
+        .step-indicator.active {
+            background-color: #3B82F6;
+            color: white;
+            border-color: #3B82F6;
+        }
+        .step-indicator.completed {
+            background-color: #10B981;
+            color: white;
+            border-color: #10B981;
+        }
+    </style>
+    <!-- Chosen Palette: Technical Blue & Slate - Professional, trustworthy, cloud-native feel. -->
+    <!-- Application Structure Plan: 
+         1. Header & Context: Brief intro.
+         2. Configuration Hub: Input fields (Account, Key) that drive the whole app state.
+         3. Interactive Architecture: A clickable HTML grid mimicking the source diagram to explain components.
+         4. Deployment Wizard: Vertical timeline for the 6 steps.
+            - Step 2 includes a Chart.js viz to explain caching config.
+            - All code blocks dynamic based on Config Hub inputs.
+         5. Troubleshooting/Cleanup: Final actions.
+         Rationale: This structure moves from high-level understanding (Architecture) to personalization (Config) to execution (Wizard), reducing error by generating specific code. -->
+    <!-- Visualization & Content Choices:
+         1. Architecture Diagram: HTML/CSS Grid. Goal: Context. Interaction: Click to reveal details. NO SVG.
+         2. Caching Trade-off Chart: Chart.js Bar Chart. Goal: Explain 'attribute-expiration-sec'. Interaction: Static viz of concept.
+         3. Dynamic Code Blocks: HTML Pre/Code. Goal: Usability. Interaction: Updates text based on user input.
+         4. Prerequisite Checklist: Interactive HTML list. Goal: Readiness check. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="text-gray-800">
+
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Azure Blobfuse Deployment Assistant</h1>
+                    <p class="mt-1 text-sm text-gray-500">Interactive guide to mounting Azure Blob Storage in Docker containers via Linux Host.</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        Blobfuse2
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 ml-2">
+                        Docker Volume
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+        <!-- Section 1: Introduction & Configuration Generator -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">1. Configure Your Deployment</h2>
+                    <p class="text-gray-600 mb-6 text-sm">
+                        Enter your Azure details below. The guide will automatically update all commands and configuration files with your specific information. 
+                        <span class="text-red-500 font-medium">Note: Data is processed locally in your browser and not saved anywhere.</span>
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="storageAccount" class="block text-sm font-medium text-gray-700">Storage Account Name</label>
+                            <input type="text" id="storageAccount" placeholder="e.g., mystorageacct" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border bg-gray-50" oninput="updateGuide()">
+                        </div>
+                        <div>
+                            <label for="containerName" class="block text-sm font-medium text-gray-700">Container Name</label>
+                            <input type="text" id="containerName" placeholder="e.g., my-blob-container" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border bg-gray-50" oninput="updateGuide()">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="accountKey" class="block text-sm font-medium text-gray-700">Account Key (or SAS)</label>
+                            <input type="password" id="accountKey" placeholder="e.g., K9...==" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border bg-gray-50" oninput="updateGuide()">
+                            <p class="mt-1 text-xs text-gray-400">Used only to generate the config.yml snippet below.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prerequisites Checklist -->
+                <div class="bg-blue-50 rounded-xl p-6 border border-blue-100">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-3">Prerequisites Checklist</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="text-sm text-blue-800">Linux Host (Ubuntu/RHEL)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="text-sm text-blue-800">Root / Sudo Privileges</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="text-sm text-blue-800">Azure Storage Account</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="text-sm text-blue-800">Docker Installed</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Architecture Explorer -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 flex flex-col">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Architecture Explorer</h2>
+                <p class="text-sm text-gray-500 mb-4">Click a component to understand its role in the flow.</p>
+                
+                <div class="flex-grow flex flex-col justify-center items-center space-y-2 relative">
+                    <!-- Azure Cloud -->
+                    <div id="node-azure" class="diagram-node w-48 p-3 bg-blue-100 border-2 border-blue-200 rounded-lg text-center" onclick="showInfo('azure')">
+                        <div class="text-xs text-blue-500 font-bold uppercase mb-1">Source</div>
+                        <div class="font-semibold text-gray-800">Azure Storage Account</div>
+                        <div class="text-xs text-gray-500">Blob Container</div>
+                    </div>
+
+                    <!-- Connection Line -->
+                    <div class="connector-v h-8"></div>
+
+                    <!-- Host Machine Box -->
+                    <div class="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative">
+                        <div class="absolute top-2 left-2 text-xs font-bold text-gray-400 uppercase">Linux Host Machine</div>
+                        
+                        <div class="flex flex-col items-center space-y-2 mt-4">
+                            <!-- Blobfuse -->
+                            <div id="node-blobfuse" class="diagram-node w-40 p-2 bg-purple-100 border-2 border-purple-200 rounded-lg text-center" onclick="showInfo('blobfuse')">
+                                <div class="font-bold text-purple-800">Blobfuse2</div>
+                                <div class="text-xs text-purple-600">Translator Bridge</div>
+                            </div>
+                            
+                            <!-- Arrow Down -->
+                            <div class="text-gray-400 text-lg">&#8595;</div>
+
+                            <!-- Mount Point -->
+                            <div id="node-mount" class="diagram-node w-40 p-2 bg-green-100 border-2 border-green-200 rounded-lg text-center" onclick="showInfo('mount')">
+                                <div class="font-bold text-green-800">/mnt/data</div>
+                                <div class="text-xs text-green-600">Host Mount Point</div>
+                            </div>
+
+                             <!-- Arrow Down -->
+                             <div class="text-gray-400 text-lg">&#8595;</div>
+
+                             <!-- Docker Container -->
+                             <div id="node-docker" class="diagram-node w-40 p-2 bg-indigo-100 border-2 border-indigo-200 rounded-lg text-center" onclick="showInfo('docker')">
+                                 <div class="font-bold text-indigo-800">Docker Container</div>
+                                 <div class="text-xs text-indigo-600">Vol: /app/data</div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Context Info Box -->
+                <div id="info-box" class="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100 text-sm text-yellow-800 min-h-[5rem]">
+                    <span class="font-bold">Select a component</span> above to see how it fits into the deployment strategy.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Step-by-Step Deployment Guide -->
+        <section>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-900">Deployment Steps</h2>
+                <p class="text-gray-600">Follow these 6 steps to complete the integration. Commands below are updated with your config.</p>
+            </div>
+
+            <div class="space-y-8">
+                
+                <!-- Step 1 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-blue-500 font-bold text-blue-500 bg-white">1</div>
+                        <div class="w-0.5 h-full bg-gray-200 mx-auto my-2"></div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Install Blobfuse2 & FUSE</h3>
+                        <p class="text-gray-600 mb-4">First, we need to install the Microsoft package repository and the necessary FUSE libraries on your Linux host. FUSE (Filesystem in Userspace) allows non-privileged users to create file systems.</p>
+                        <pre class="text-sm"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+sudo apt-get update
+sudo apt-get install libfuse3-dev fuse3 blobfuse2 -y</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-300 font-bold text-gray-500 bg-white step-indicator">2</div>
+                        <div class="w-0.5 h-full bg-gray-200 mx-auto my-2"></div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Create Configuration File</h3>
+                        <p class="text-gray-600 mb-4">Create the configuration YAML file. This tells Blobfuse how to connect to Azure and how to handle caching.</p>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+                            <div>
+                                <pre class="text-sm h-full"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code id="code-config">sudo touch /etc/blobfuse2-config.yml
+sudo nano /etc/blobfuse2-config.yml
+
+# PASTE THIS CONTENT:
+allow-other: true
+
+logging:
+  type: syslog
+  level: log_debug
+
+components:
+  - libfuse
+  - file_cache
+  - attr_cache
+  - azstorage
+
+libfuse:
+  attribute-expiration-sec: 120
+  entry-expiration-sec: 120
+  negative-entry-expiration-sec: 240
+
+file_cache:
+  path: /mnt/blobfusetmp
+  timeout-sec: 120
+  max-size-mb: 4096
+
+azstorage:
+  type: block
+  account-name: <span class="text-yellow-400">[ENTER ACCOUNT NAME]</span>
+  account-key: <span class="text-yellow-400">[ENTER KEY]</span>
+  endpoint: https://<span class="text-yellow-400">[ACCOUNT]</span>.blob.core.windows.net
+  mode: key
+  container: <span class="text-yellow-400">[ENTER CONTAINER]</span></code></pre>
+                            </div>
+                            
+                            <!-- Visualization of Caching -->
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">Understanding Cache Config</h4>
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Blobfuse caches files locally (`/mnt/blobfusetmp`) to speed up access. 
+                                    `timeout-sec` determines how long a file stays in cache before re-validating with Azure.
+                                </p>
+                                <div class="chart-container">
+                                    <canvas id="cacheChart"></canvas>
+                                </div>
+                                <div class="mt-2 text-xs text-center text-gray-400">Higher timeout = Faster Read / Lower Consistency</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-300 font-bold text-gray-500 bg-white step-indicator">3</div>
+                        <div class="w-0.5 h-full bg-gray-200 mx-auto my-2"></div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Secure the Credentials</h3>
+                        <p class="text-gray-600 mb-4">
+                            <span class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold uppercase tracking-wide mr-2">Critical Security</span>
+                            The config file contains your Storage Key. We must restrict access to the <code>root</code> user only.
+                        </p>
+                        <pre class="text-sm"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>sudo chown root:root /etc/blobfuse2-config.yml
+sudo chmod 600 /etc/blobfuse2-config.yml</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-300 font-bold text-gray-500 bg-white step-indicator">4</div>
+                        <div class="w-0.5 h-full bg-gray-200 mx-auto my-2"></div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Create Mount Points</h3>
+                        <p class="text-gray-600 mb-4">Create the destination directory for your files and the temporary cache directory.</p>
+                        <pre class="text-sm"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>sudo mkdir -p /mnt/data
+sudo mkdir -p /mnt/blobfusetmp
+sudo chown root:root /mnt/blobfusetmp</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 5 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-300 font-bold text-gray-500 bg-white step-indicator">5</div>
+                        <div class="w-0.5 h-full bg-gray-200 mx-auto my-2"></div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Mount Storage</h3>
+                        <p class="text-gray-600 mb-4">Execute the mount command using the config file created in Step 2.</p>
+                        <pre class="text-sm"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>sudo blobfuse2 mount /mnt/data --config-file=/etc/blobfuse2-config.yml</code></pre>
+                        <div class="mt-4 bg-green-50 p-3 rounded text-sm text-green-800 border-l-4 border-green-400">
+                            <strong>Verification:</strong> Run <code>df -h</code> after this command. You should see a line entry for <code>blobfuse2</code> mounted at <code>/mnt/data</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6 -->
+                <div class="flex">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-300 font-bold text-gray-500 bg-white step-indicator">6</div>
+                    </div>
+                    <div class="flex-grow pb-8">
+                        <h3 class="text-lg font-bold text-gray-900">Run Docker Container</h3>
+                        <p class="text-gray-600 mb-4">Finally, start your Docker container and bind the host mount point (`/mnt/data`) to a path inside the container.</p>
+                        <pre class="text-sm"><button class="copy-btn" onclick="copyCode(this)">Copy</button><code id="code-docker">sudo docker run -it -d \
+  --name my-app-container \
+  -v /mnt/data:/app/data:shared \
+  -e Account_Name="<span class="text-yellow-400">[ENTER ACCOUNT NAME]</span>" \
+  your-docker-image:latest</code></pre>
+                        <div class="mt-4 p-4 bg-gray-100 rounded-lg text-sm text-gray-700">
+                            <strong>Key Flag:</strong> <code>:shared</code><br>
+                            This flag is crucial for FUSE mounts. It ensures that the mount created on the host is correctly propagated and visible inside the Docker container.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Troubleshooting / Cleanup -->
+        <section class="bg-gray-800 rounded-xl shadow-lg p-8 text-white">
+            <h2 class="text-xl font-bold mb-4">Unmounting & Cleanup</h2>
+            <p class="text-gray-300 mb-4">Need to disconnect the storage safely? Use the following command. Do not simply delete the folder while it is mounted.</p>
+            <div class="bg-gray-900 p-4 rounded border border-gray-700 font-mono text-sm flex justify-between items-center">
+                <span>sudo blobfuse2 unmount /mnt/data</span>
+                <button class="text-xs text-gray-400 hover:text-white" onclick="navigator.clipboard.writeText('sudo blobfuse2 unmount /mnt/data')">Copy</button>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Generated based on the Azure Blobfuse Deployment Architecture.</p>
+        </div>
+    </footer>
+
+    <script>
+        // State Management
+        const state = {
+            account: '',
+            container: '',
+            key: ''
+        };
+
+        // Chart.js Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('cacheChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Attribute Exp.', 'Entry Exp.', 'File Cache Timeout'],
+                    datasets: [{
+                        label: 'Time (Seconds)',
+                        data: [120, 120, 120],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(245, 158, 11, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(16, 185, 129)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Value: ${context.raw} seconds`;
+                                },
+                                afterBody: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    if(idx === 0) return "Time attributes are cached before checking Azure.";
+                                    if(idx === 1) return "Time file existence is cached.";
+                                    if(idx === 2) return "Time file content stays in local temp folder.";
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Seconds' }
+                        }
+                    }
+                }
+            });
+        });
+
+        // Dynamic Content Update
+        function updateGuide() {
+            state.account = document.getElementById('storageAccount').value.trim() || '[YOUR_STORAGE_ACCOUNT]';
+            state.container = document.getElementById('containerName').value.trim() || '[YOUR_CONTAINER]';
+            state.key = document.getElementById('accountKey').value.trim() || '[YOUR_KEY]';
+
+            // Update Config Block
+            const configTemplate = `sudo touch /etc/blobfuse2-config.yml
+sudo nano /etc/blobfuse2-config.yml
+
+# PASTE THIS CONTENT:
+allow-other: true
+
+logging:
+  type: syslog
+  level: log_debug
+
+components:
+  - libfuse
+  - file_cache
+  - attr_cache
+  - azstorage
+
+libfuse:
+  attribute-expiration-sec: 120
+  entry-expiration-sec: 120
+  negative-entry-expiration-sec: 240
+
+file_cache:
+  path: /mnt/blobfusetmp
+  timeout-sec: 120
+  max-size-mb: 4096
+
+azstorage:
+  type: block
+  account-name: ${state.account}
+  account-key: ${state.key}
+  endpoint: https://${state.account}.blob.core.windows.net
+  mode: key
+  container: ${state.container}`;
+            
+            document.getElementById('code-config').innerText = configTemplate;
+
+            // Update Docker Command
+            const dockerTemplate = `sudo docker run -it -d \\
+  --name my-app-container \\
+  -v /mnt/data:/app/data:shared \\
+  -e Account_Name="${state.account}" \\
+  your-docker-image:latest`;
+            
+            document.getElementById('code-docker').innerText = dockerTemplate;
+        }
+
+        // Copy Functionality
+        function copyCode(btn) {
+            const codeBlock = btn.nextElementSibling;
+            navigator.clipboard.writeText(codeBlock.innerText).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(() => btn.innerText = originalText, 2000);
+            });
+        }
+
+        // Architecture Diagram Logic
+        const nodeInfo = {
+            'azure': {
+                title: 'Azure Storage Account',
+                content: 'The source of truth. Data rests here in Blob format. Blobfuse translates requests from the Linux machine into REST API calls to this endpoint.',
+                color: 'bg-blue-50 border-blue-100 text-blue-900'
+            },
+            'blobfuse': {
+                title: 'Blobfuse2 Driver',
+                content: 'The heavy lifter. It runs on the Host Machine, intercepting file system calls (like "ls" or "mkdir") and converting them to Azure Storage interactions. It uses a local cache for speed.',
+                color: 'bg-purple-50 border-purple-100 text-purple-900'
+            },
+            'mount': {
+                title: 'Host Mount Point (/mnt/data)',
+                content: 'A standard directory on the Linux Host. To the OS, it looks like a normal folder, but it is actually a window into the Azure Cloud provided by Blobfuse.',
+                color: 'bg-green-50 border-green-100 text-green-900'
+            },
+            'docker': {
+                title: 'Docker Container',
+                content: 'The final destination. By using the `-v` flag with `:shared`, the container sees the contents of `/mnt/data` as if they were local files inside `/app/data`.',
+                color: 'bg-indigo-50 border-indigo-100 text-indigo-900'
+            }
+        };
+
+        function showInfo(nodeId) {
+            const infoBox = document.getElementById('info-box');
+            const data = nodeInfo[nodeId];
+            
+            // Highlight styling
+            document.querySelectorAll('.diagram-node').forEach(el => el.classList.remove('active'));
+            document.getElementById('node-' + nodeId).classList.add('active');
+
+            // Content update with fade
+            infoBox.style.opacity = '0';
+            setTimeout(() => {
+                infoBox.className = `mt-6 p-4 rounded-lg border text-sm transition-opacity duration-300 ${data.color}`;
+                infoBox.innerHTML = `<h4 class="font-bold mb-1">${data.title}</h4><p>${data.content}</p>`;
+                infoBox.style.opacity = '1';
+            }, 200);
+        }
+
+        // Initialize default inputs
+        updateGuide();
+    </script>
+</body>
+</html>
