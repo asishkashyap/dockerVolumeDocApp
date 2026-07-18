@@ -1,0 +1,76 @@
+# -----------------------------------------------
+# Global Application Identity
+# -----------------------------------------------
+app:
+  name: blobmountguide          # Used as label selector and container name
+  deploymentName: blobmountguidedeploy  # Name of the Deployment resource
+
+# -----------------------------------------------
+# Replica Configuration
+# -----------------------------------------------
+replicaCount: 2
+
+# -----------------------------------------------
+# Container Image Configuration
+# -----------------------------------------------
+image:
+  repository: ashishkashyap92/frontend23
+  tag: latest                   # Image tag (override per environment)
+  pullPolicy: IfNotPresent
+
+# -----------------------------------------------
+# Container Port
+# -----------------------------------------------
+containerPort: 80
+
+# -----------------------------------------------
+# Service Configuration
+# -----------------------------------------------
+service:
+  enabled: true
+  type: ClusterIP               # ClusterIP | NodePort | LoadBalancer
+  port: 80
+  targetPort: 80
+  nodePort: ""                  # Only used when type: NodePort
+
+# -----------------------------------------------
+# Resource Limits & Requests
+# -----------------------------------------------
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "250m"
+    memory: "256Mi"
+
+# -----------------------------------------------
+# Liveness & Readiness Probes
+# -----------------------------------------------
+livenessProbe:
+  enabled: false
+  path: /
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: false
+  path: /
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+# -----------------------------------------------
+# Environment Variables (key-value pairs)
+# -----------------------------------------------
+env: []
+# - name: ENV_VAR
+#   value: "some-value"
+
+# -----------------------------------------------
+# Node Selector, Tolerations, Affinity
+# -----------------------------------------------
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
