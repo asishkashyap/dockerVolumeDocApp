@@ -8,10 +8,9 @@ A lightweight **Nginx-based frontend** application containerized with Docker and
 
 ```
 .
-├── dockerVolumeDocApp/
-│   ├── Dockerfile          # Single-stage Nginx Docker image
-│   ├── index.html          # Frontend HTML application
-│   └── README.md           # This file
+├── Dockerfile              # Single-stage Nginx Docker image
+├── index.html              # Frontend HTML application
+├── README.md               # This file
 └── helm-chart/
     ├── Chart.yaml          # Helm chart metadata (v0.1.1)
     ├── values.yaml         # Default configuration values
@@ -54,7 +53,7 @@ ashishkashyap92/frontend23:latest
 ### Install
 
 ```bash
-# From the repo root (parent of helm-chart/)
+# From the repo root
 helm install blobmountguide ./helm-chart
 ```
 
@@ -125,8 +124,57 @@ helm install my-prometheus prometheus-community/prometheus --version 29.17.0
 ```
 
 Access Prometheus:
-```bash
-export POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name=prometheus,app.kubernetes.io/instance=my-prometheus" -o jsonpath="{.items[0].metadata.name}")
+```powershell
+# PowerShell
+$POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name=prometheus,app.kubernetes.io/instance=my-prometheus" -o jsonpath="{.items[0].metadata.name}")
 kubectl port-forward $POD_NAME 9090
 # Visit http://localhost:9090
 ```
+
+---
+
+## 📈 Visualization (Grafana)
+
+Grafana is deployed using the Grafana community Helm chart:
+
+```bash
+helm repo add grafana-community https://grafana.github.io/helm-charts
+helm repo update
+helm install my-grafana grafana-community/grafana --version 12.7.2
+```
+
+### Access Grafana
+
+```bash
+kubectl port-forward svc/my-grafana 3000:80
+# Visit http://localhost:3000
+```
+
+### Get Admin Password
+
+```powershell
+kubectl get secret --namespace default my-grafana -o jsonpath="{.data.admin-password}" `
+  | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+```
+
+Login with:
+- **Username:** `admin`
+- **Password:** *(output of above command)*
+
+### Connect Prometheus as Datasource
+
+1. Go to **Connections → Data Sources → Add data source → Prometheus**
+2. Set URL to:
+   ```
+   http://my-prometheus-server.default.svc.cluster.local
+   ```
+3. Click **Save & Test**
+
+### Import Kubernetes Dashboard (ID: 18283)
+
+1. Go to **Dashboards → Import**
+2. Enter dashboard ID: `18283` → click **Load**
+3. Select **Prometheus** as the datasource
+4. Click **Import**
+
+Dashboard will show live Kubernetes cluster metrics — pods, CPU, memory, network, and more.
